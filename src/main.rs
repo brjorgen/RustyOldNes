@@ -120,8 +120,12 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x01, mnem: "ORA".to_string(), addressing_mode: AddressingMode::AddressingIndirectX},
 		Ins6502 {opcode: 0xA9, mnem: "LDA".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0xA2, mnem: "LDX".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
+		Ins6502 {opcode: 0xA0, mnem: "LDY".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0x6C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingIndirect},
 		Ins6502 {opcode: 0x86, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		Ins6502 {opcode: 0x84, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		Ins6502 {opcode: 0x85, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		
 	    ]
 	}
     }
@@ -269,12 +273,14 @@ impl	Cpu6502 {
 	    }
 
 	    "STX" => {	self.bus.vram[operand as usize] = self.regs.x; }
+	    "STY" => {	self.bus.vram[operand as usize] = self.regs.y; }
+	    "STA" => {  self.bus.vram[operand as usize] = self.regs.a; }
 	    "BRK" => { return -1; }
 	    "CLC" => { status_reset_flag(&mut self.regs, 'C'); }
 	    "TAX" => { self.regs.x = self.regs.a; }
 	    "TXA" => { self.regs.a = self.regs.x; }
 	    "LDX" => { self.regs.x = operand as u8; }
-	    
+	    "LDY" => { self.regs.y = operand as u8; }
 	    _ => todo!()
 	}
 	return 0;
@@ -359,6 +365,15 @@ mod tests{
     }
 
     #[test]
+    fn test_0xa0_ldy_immediate () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa0, 0xc0, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.y == 0xc0);
+    }
+
+    #[test]
     fn test_0x8a_txa_implied () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0xc0, 0x8a, 0x00];
@@ -384,7 +399,27 @@ mod tests{
 	cpu.run(&mut rom_buff);
 	assert!(cpu.bus.vram[0] == 0x03);
     }
-    
+
+
+    #[test]
+    fn test_0x84_sty_zp () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa0, 0x03, 0x84, 0x00, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.bus.vram[0] == 0x03);
+    }
+
+
+    #[test]
+    fn test_0x85_sta_zp () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa9, 0x03, 0x85, 0x00, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.bus.vram[0] == 0x03);
+    }
+
     #[test]
     fn test_0x01_ora_ind_x () {
 	let mut cpu = Cpu6502::new();
@@ -396,7 +431,6 @@ mod tests{
 				0x00];	    // brk
 
 	cpu.run(&mut rom_buff);
-	println!("{}", cpu.regs.a);
 	assert!(cpu.regs.a == 0x3);
     }
 }
