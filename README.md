@@ -11,7 +11,7 @@
 
 # RustyOldNes
 
-[\![Rust](![img](https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml/badge.svg))](<https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml>)
+[![Rust](![img](https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml/badge.svg))](<https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml>)
 An emulator for the Nintendo Entertainment System, written in Rust.
 
 Not quite "Feed it your favourite NES Rom and enjoy!" yet, as most 6502
