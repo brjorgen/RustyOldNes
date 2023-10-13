@@ -1,13 +1,13 @@
 
 # Table of Contents
 
-1.  [RustyOldNes](#org3ea6173)
-2.  [Building](#org3102960)
-3.  [Usage](#orgaaa200a)
+1.  [RustyOldNes](#org57cb1e5)
+2.  [Building](#orge0f5b76)
+3.  [Usage](#org5740820)
 
 
 
-<a id="org3ea6173"></a>
+<a id="org57cb1e5"></a>
 
 # RustyOldNes
 
@@ -17,7 +17,7 @@ Not quite "Feed it your favourite NES Rom and enjoy!" yet, as most 6502
 instructions, the APU and PPU have yet to be impemented.
 
 
-<a id="org3102960"></a>
+<a id="orge0f5b76"></a>
 
 # Building
 
@@ -26,7 +26,7 @@ instructions, the APU and PPU have yet to be impemented.
     cargo build --release
 
 
-<a id="orgaaa200a"></a>
+<a id="org5740820"></a>
 
 # Usage
 
@@ -34,5 +34,5 @@ instructions, the APU and PPU have yet to be impemented.
 
 or
 
-    ./target/release/rusty_old_nes
+    ./target/release/rusty_old_nes [path/to/your/rom]
 
