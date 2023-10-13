@@ -1,6 +1,7 @@
 use std::fs;
 use std::env::args;
 use std::io::Read;
+use std::fmt;
 
 const MEMSIZE_6502: u16 = 0xFFFF;
 
@@ -26,17 +27,37 @@ pub const STATUS_FLAG_I: u8 = 0x01 << 2;
 pub const STATUS_FLAG_Z: u8 = 0x01 << 1;
 pub const STATUS_FLAG_C: u8 = 0x01;
 
+#[derive(Debug, Clone, Copy)]
 enum  AddressingMode {
     AddressingAbsolute,
     AddressingAbsoluteX,
     AddressingAbsoluteY,
     AddressingImmediate,
     AddressingImplied,
+    AddressingIndirect,
     AddressingIndirectX,
     AddressingIndirectY,
     AddressingZeroPage,
     AddressingZeroPageX,
     AddressingZeroPageY,
+}
+
+impl fmt::Display for AddressingMode {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+	    AddressingMode::AddressingAbsolute => write!(f, "AddressingAbsolute"),
+	    AddressingMode::AddressingAbsoluteX => write!(f, "AddressingAbsoluteX"),
+	    AddressingMode::AddressingAbsoluteY => write!(f, "AddressingAbsoluteY"),
+	    AddressingMode::AddressingImmediate => write!(f, "AddressingImmediate"),
+	    AddressingMode::AddressingImplied => write!(f, "AddressingImplied"),
+	    AddressingMode::AddressingIndirect => write!(f, "AddressingIndirect"),
+	    AddressingMode::AddressingIndirectX => write!(f, "AddressingIndirectX"),
+	    AddressingMode::AddressingIndirectY => write!(f, "AddressingIndirectY"),
+	    AddressingMode::AddressingZeroPage => write!(f, "AddressingZeroPage"),
+	    AddressingMode::AddressingZeroPageX => write!(f, "AddressingZeroPageX"),
+	    AddressingMode::AddressingZeroPageY => write!(f, "AddressingZeroPageY")
+        }
+    }
 }
 
 struct	Ins6502 {
@@ -91,11 +112,16 @@ impl	Cpu6502 {
 	    }},
 	    ins: vec![
 		Ins6502 {opcode: 0x00, mnem: "BRK".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xAA, mnem: "TAX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0x8A, mnem: "TXA".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		Ins6502 {opcode: 0x18, mnem: "CLC".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		Ins6502 {opcode: 0x18, mnem: "CLD".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+
 		Ins6502 {opcode: 0x01, mnem: "ORA".to_string(), addressing_mode: AddressingMode::AddressingIndirectX},
 		Ins6502 {opcode: 0xA9, mnem: "LDA".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
-		Ins6502 {opcode: 0xAA, mnem: "TAX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xA2, mnem: "LDX".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
+		Ins6502 {opcode: 0x6C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingIndirect},
+		Ins6502 {opcode: 0x86, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 	    ]
 	}
     }
@@ -143,6 +169,34 @@ impl	Cpu6502 {
 		immediate
 	    }
 
+	    AddressingMode::AddressingIndirect	=> {
+		let lo: u8 = instruction_buffer[self.regs.pc as usize];
+		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		let addr: u16 = (hi << 4) as u16 | lo as u16;
+		let val = self.bus.vram[addr as usize] as u16;
+		self.regs.pc += 2;
+		val
+	    }
+
+	    AddressingMode::AddressingIndirectX	=> {
+		let lo: u8 = instruction_buffer[self.regs.pc as usize] + self.regs.x;
+		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		// let addr: u16 = (hi << 4) as u16 | lo as u16;
+		let addr: u16 = (lo << 4) as u16 | hi as u16;
+		let val = self.bus.vram[addr as usize] as u16;
+		self.regs.pc += 1;
+		val
+	    }
+
+	    AddressingMode::AddressingIndirectY	=> {
+		let lo: u8 = instruction_buffer[self.regs.pc as usize];
+		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize] + self.regs.y;
+		let addr: u16 = (hi << 4) as u16 | lo as u16;
+		let val = self.bus.vram[addr as usize] as u16;
+		self.regs.pc += 1;
+		val
+	    }
+
 	    AddressingMode::AddressingAbsolute	=> {
 		let absolute: u16 = (instruction_buffer[(self.regs.pc + 1) as usize] << 4) as u16
 		    | (instruction_buffer[(self.regs.pc + 2) as usize] as u16);
@@ -150,8 +204,31 @@ impl	Cpu6502 {
 		absolute
 	    }
 
+	    AddressingMode::AddressingAbsoluteX	=> {
+		let mut absolute: u16 = (instruction_buffer[(self.regs.pc) as usize] << 4) as u16
+		    | (instruction_buffer[(self.regs.pc + 1) as usize] as u16);
+		absolute = (((absolute & 0xFF00) >> 4) as u8 + self.regs.x) as u16 | (absolute & 0xFF) as u16;
+		self.regs.pc += 2;
+		absolute
+	    }
+
+	    AddressingMode::AddressingAbsoluteY	=> {
+		let mut absolute: u16 = (instruction_buffer[(self.regs.pc) as usize] << 4) as u16
+		    | (instruction_buffer[(self.regs.pc + 1) as usize] as u16);
+		absolute = (((absolute & 0xFF00) >> 4) as u8 + self.regs.y) as u16 | (absolute & 0xFF) as u16;
+		self.regs.pc += 2;
+		absolute
+	    }
+
 	    AddressingMode::AddressingZeroPage	=> {
 		let zp: u16 = instruction_buffer[self.regs.pc as usize] as u16;
+		let val: u16 = self.bus.vram[zp as usize] as u16;
+		self.regs.pc += 1;
+		val
+	    }
+
+	    AddressingMode::AddressingZeroPageX	=> {
+		let zp: u16 = instruction_buffer[self.regs.pc as usize] as u16 + self.regs.x as u16;
 		let val: u16 = self.bus.vram[zp as usize] as u16;
 		self.regs.pc += 2;
 		val
@@ -174,18 +251,14 @@ impl	Cpu6502 {
 	let operand = self.get_operand(index_of_ins_in_vec as u8, instruction_buffer);
 	let ins: &Ins6502 = &self.ins[index_of_ins_in_vec];
 
-	println!("{}, {:#x}", ins.mnem, operand);
+	println!("{}, {:#x} ({})", ins.mnem, operand, ins.addressing_mode.to_string());
 
 	match &ins.mnem as &str {
-	    "BRK" => { return -1; }
+
 	    "ORA" => {
 		self.regs.a = self.regs.a | operand as u8;
 		self.set_status_bit('a', 'N');
 		self.set_status_bit('a', 'Z');
-	    }
-
-	    "CLC" => { // clc
-		status_reset_flag(&mut self.regs, 'C');
 	    }
 
 	    "LDA" => {
@@ -194,10 +267,13 @@ impl	Cpu6502 {
 		self.set_status_bit('a', 'Z');
 	    }
 
-	    "TAX" => {
-		self.regs.x = self.regs.a;
-	    }
-
+	    "STX" => {	self.bus.vram[operand as usize] = self.regs.x; }
+	    "BRK" => { return -1; }
+	    "CLC" => { status_reset_flag(&mut self.regs, 'C'); }
+	    "TAX" => { self.regs.x = self.regs.a; }
+	    "TXA" => { self.regs.a = self.regs.x; }
+	    "LDX" => { self.regs.x = operand as u8; }
+	    
 	    _ => todo!()
 	}
 	return 0;
@@ -250,6 +326,7 @@ fn	main() {
 #[cfg(test)]
 mod tests{
     use super::*;
+
     #[test]
     fn test_0xa9_lda_immediate_load_data() {
 	let mut cpu = Cpu6502::new();
@@ -271,4 +348,49 @@ mod tests{
 	assert!(cpu.regs.p & STATUS_FLAG_Z == 0b10);
     }
 
+    #[test]
+    fn test_0xa2_ldx () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa2, 0xc0, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.x == 0xc0);
+    }
+
+    #[test]
+    fn test_0x8a_txa () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa2, 0xc0, 0x8a, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.a == 0xc0);
+    }
+
+    #[test]
+    fn test_0xaa_tax () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa9, 0xc0, 0xaa, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.x == 0xc0);
+    }
+
+    #[test]
+    fn test_0x01_ora () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa9, 0x03, 0x01, 0x01, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.a == 0x4);
+    }
+
+    #[test]
+    fn test_0x86_stx () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa2, 0x03, 0x86, 0x00, 0x00];
+
+	cpu.run(&mut rom_buff);
+	println!(">> {}", cpu.bus.vram[0]);
+	assert!(cpu.bus.vram[0] == 0x03);
+    }
 }
