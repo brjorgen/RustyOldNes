@@ -329,7 +329,7 @@ mod tests{
     use super::*;
 
     #[test]
-    fn test_0xa9_lda_immediate_load_data() {
+    fn test_0xa9_lda_immediate() {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec!(0xa9, 0x05, 0x00);
 
@@ -341,7 +341,7 @@ mod tests{
     }
 
     #[test]
-    fn test_0xa9_lda_zero_flag() {
+    fn test_0xa9_lda_immediate_zero_flag() {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa9, 0x00, 0x00];
 
@@ -350,7 +350,7 @@ mod tests{
     }
 
     #[test]
-    fn test_0xa2_ldx () {
+    fn test_0xa2_ldx_immediate () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0xc0, 0x00];
 
@@ -359,7 +359,7 @@ mod tests{
     }
 
     #[test]
-    fn test_0x8a_txa () {
+    fn test_0x8a_txa_implied () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0xc0, 0x8a, 0x00];
 
@@ -368,7 +368,7 @@ mod tests{
     }
 
     #[test]
-    fn test_0xaa_tax () {
+    fn test_0xaa_tax_implied () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa9, 0xc0, 0xaa, 0x00];
 
@@ -377,7 +377,16 @@ mod tests{
     }
 
     #[test]
-    fn test_0x01_ora_indirect_x () {
+    fn test_0x86_stx_zp () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa2, 0x03, 0x86, 0x00, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.bus.vram[0] == 0x03);
+    }
+    
+    #[test]
+    fn test_0x01_ora_ind_x () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0x02, // load 2 into x
 				0x86, 0x00, // write x to mem[0]
@@ -389,14 +398,5 @@ mod tests{
 	cpu.run(&mut rom_buff);
 	println!("{}", cpu.regs.a);
 	assert!(cpu.regs.a == 0x3);
-    }
-
-    #[test]
-    fn test_0x86_stx () {
-	let mut cpu = Cpu6502::new();
-	let mut rom_buff = vec![0xa2, 0x03, 0x86, 0x00, 0x00];
-
-	cpu.run(&mut rom_buff);
-	assert!(cpu.bus.vram[0] == 0x03);
     }
 }
