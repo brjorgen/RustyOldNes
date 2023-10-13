@@ -1,23 +1,24 @@
 
 # Table of Contents
 
-1.  [RustyOldNes](#org57cb1e5)
-2.  [Building](#orge0f5b76)
-3.  [Usage](#org5740820)
+1.  [RustyOldNes](#org3b7fcb5)
+2.  [Building](#orgcda790f)
+3.  [Usage](#org372d615)
 
 
 
-<a id="org57cb1e5"></a>
+<a id="org3b7fcb5"></a>
 
 # RustyOldNes
 
+[\![Rust](![img](https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml/badge.svg))](<https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml>)
 An emulator for the Nintendo Entertainment System, written in Rust.
 
 Not quite "Feed it your favourite NES Rom and enjoy!" yet, as most 6502
 instructions, the APU and PPU have yet to be impemented.
 
 
-<a id="orge0f5b76"></a>
+<a id="orgcda790f"></a>
 
 # Building
 
@@ -26,7 +27,7 @@ instructions, the APU and PPU have yet to be impemented.
     cargo build --release
 
 
-<a id="org5740820"></a>
+<a id="org372d615"></a>
 
 # Usage
 
