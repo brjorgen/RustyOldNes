@@ -189,9 +189,10 @@ impl	Cpu6502 {
 	    }
 
 	    AddressingMode::AddressingIndirectY	=> {
-		let lo: u8 = instruction_buffer[self.regs.pc as usize];
-		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize] + self.regs.y;
-		let addr: u16 = (hi << 4) as u16 | lo as u16;
+		let lo: u8 = instruction_buffer[self.regs.pc as usize] + self.regs.y;
+		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		// let addr: u16 = (hi << 4) as u16 | lo as u16;
+		let addr: u16 = (lo << 4) as u16 | hi as u16;
 		let val = self.bus.vram[addr as usize] as u16;
 		self.regs.pc += 1;
 		val
@@ -376,12 +377,18 @@ mod tests{
     }
 
     #[test]
-    fn test_0x01_ora () {
+    fn test_0x01_ora_indirect_x () {
 	let mut cpu = Cpu6502::new();
-	let mut rom_buff = vec![0xa9, 0x03, 0x01, 0x01, 0x00];
+	let mut rom_buff = vec![0xa2, 0x02, // load 2 into x
+				0x86, 0x00, // write x to mem[0]
+				0xa9, 0x01, // load 1 in a
+				0xa2, 0x00, // load 0 in x
+				0x01, 0x00, // a -> a | mem[x] (ora)
+				0x00];	    // brk
 
 	cpu.run(&mut rom_buff);
-	assert!(cpu.regs.a == 0x4);
+	println!("{}", cpu.regs.a);
+	assert!(cpu.regs.a == 0x3);
     }
 
     #[test]
@@ -390,7 +397,6 @@ mod tests{
 	let mut rom_buff = vec![0xa2, 0x03, 0x86, 0x00, 0x00];
 
 	cpu.run(&mut rom_buff);
-	println!(">> {}", cpu.bus.vram[0]);
 	assert!(cpu.bus.vram[0] == 0x03);
     }
 }
