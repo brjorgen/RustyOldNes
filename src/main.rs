@@ -116,15 +116,24 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x8A, mnem: "TXA".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		Ins6502 {opcode: 0x18, mnem: "CLC".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		Ins6502 {opcode: 0x18, mnem: "CLD".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xC8, mnem: "INY".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 
 		Ins6502 {opcode: 0x01, mnem: "ORA".to_string(), addressing_mode: AddressingMode::AddressingIndirectX},
 		Ins6502 {opcode: 0xA9, mnem: "LDA".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0xA2, mnem: "LDX".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0xA0, mnem: "LDY".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0x6C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingIndirect},
+		Ins6502 {opcode: 0x4C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 		Ins6502 {opcode: 0x86, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 		Ins6502 {opcode: 0x84, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 		Ins6502 {opcode: 0x85, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+
+		Ins6502 {opcode: 0xE6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		Ins6502 {opcode: 0xF6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
+		Ins6502 {opcode: 0xEE, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
+		Ins6502 {opcode: 0xFE, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingAbsoluteX},
+		Ins6502 {opcode: 0xE8, mnem: "INX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xC8, mnem: "INY".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		
 	    ]
 	}
@@ -272,6 +281,7 @@ impl	Cpu6502 {
 		self.set_status_bit('a', 'Z');
 	    }
 
+	    "JMP" => {  self.regs.pc = operand }
 	    "STX" => {	self.bus.vram[operand as usize] = self.regs.x; }
 	    "STY" => {	self.bus.vram[operand as usize] = self.regs.y; }
 	    "STA" => {  self.bus.vram[operand as usize] = self.regs.a; }
@@ -281,6 +291,10 @@ impl	Cpu6502 {
 	    "TXA" => { self.regs.a = self.regs.x; }
 	    "LDX" => { self.regs.x = operand as u8; }
 	    "LDY" => { self.regs.y = operand as u8; }
+	    "INC" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize] + 1 }
+	    "INX" => { self.regs.x = self.regs.x + 1 }
+	    "INY" => { self.regs.y = self.regs.y + 1 }
+	    
 	    _ => todo!()
 	}
 	return 0;
@@ -400,7 +414,6 @@ mod tests{
 	assert!(cpu.bus.vram[0] == 0x03);
     }
 
-
     #[test]
     fn test_0x84_sty_zp () {
 	let mut cpu = Cpu6502::new();
@@ -409,7 +422,6 @@ mod tests{
 	cpu.run(&mut rom_buff);
 	assert!(cpu.bus.vram[0] == 0x03);
     }
-
 
     #[test]
     fn test_0x85_sta_zp () {
@@ -432,5 +444,15 @@ mod tests{
 
 	cpu.run(&mut rom_buff);
 	assert!(cpu.regs.a == 0x3);
+    }
+
+    #[test]
+    fn test_e8_c8_inxy_implied () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xe8, 0xc8, 0x00];
+
+	cpu.run(&mut rom_buff);
+	assert!(cpu.regs.x == 0x1);
+	assert!(cpu.regs.y == 0x1);
     }
 }

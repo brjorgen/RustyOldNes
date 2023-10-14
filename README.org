@@ -1,0 +1,23 @@
+#+TITLE: RustyOldNes
+* RustyOldNes
+  [![Rust](https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml/badge.svg)](https://github.com/brjorgen/RustyOldNes/actions/workflows/rust.yml)
+  An emulator for the Nintendo Entertainment System, written in Rust.
+
+  Not quite "Feed it your favourite NES Rom and enjoy!" yet, as most 6502
+  instructions, the APU and PPU have yet to be impemented.
+
+* Building
+#+BEGIN_SRC bash
+  git clone https://github.com/brjorgen/RustyOldNes.git
+  cd RustyOldNes
+  cargo build --release
+#+END_SRC
+
+* Usage
+#+BEGIN_SRC bash
+  cargo run [path/to/your/rom]
+#+END_SRC
+  or
+#+BEGIN_SRC bash
+  ./target/release/rusty_old_nes [path/to/your/rom]
+#+END_SRC
