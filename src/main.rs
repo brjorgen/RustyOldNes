@@ -4,6 +4,7 @@ use std::io::Read;
 use std::fmt;
 
 const MEMSIZE_6502: u16 = 0xFFFF;
+const MEMSTART_CARTRIDGE_ROM_6502: u16 = 0x8000;
 
 // 7  bit  0
 // ---- ----
@@ -100,7 +101,7 @@ impl	Cpu6502 {
     pub fn	new() -> Self {
 	Cpu6502 {
 	    regs: { Regs6502 {
-		pc: 0,
+		pc: MEMSTART_CARTRIDGE_ROM_6502,
 		sp: 0,
 		p:  0,
 		a:  0,
@@ -179,30 +180,30 @@ impl	Cpu6502 {
     }
 
 
-    fn get_operand(self: &mut Self, instruction_index: u8, instruction_buffer: &Vec<u8>) -> u16 {
+    fn get_operand(self: &mut Self, instruction_index: u8) -> u16 {
 	let mode = &self.ins[instruction_index as usize].addressing_mode;
 
 	match mode {
 	    AddressingMode::AddressingImplied	=> { return 0; } 
 
 	    AddressingMode::AddressingImmediate	=> {
-		let immediate: u16 = instruction_buffer[self.regs.pc as usize] as u16;
+		let immediate: u16 = self.regs.pc;
 		self.regs.pc += 1;
 		immediate
 	    }
 
 	    AddressingMode::AddressingIndirect	=> {
-		let lo: u8 = instruction_buffer[self.regs.pc as usize];
-		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		let lo: u16 = self.regs.pc;
+		let hi: u16 = self.regs.pc + 1;
 		let addr: u16 = (hi << 4) as u16 | lo as u16;
-		let val = self.bus.vram[addr as usize] as u16;
+		// let val = self.bus.vram[addr as usize] as u16;
 		self.regs.pc += 2;
-		val
+		addr
 	    }
 
 	    AddressingMode::AddressingIndirectX	=> {
-		let lo: u8 = instruction_buffer[self.regs.pc as usize] + self.regs.x;
-		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		let lo: u8 = self.bus.vram[self.regs.pc as usize] + self.regs.x;
+		let hi: u8 = self.bus.vram[(self.regs.pc + 1) as usize];
 		// let addr: u16 = (hi << 4) as u16 | lo as u16;
 		let addr: u16 = (lo << 4) as u16 | hi as u16;
 		let val = self.bus.vram[addr as usize] as u16;
@@ -211,8 +212,8 @@ impl	Cpu6502 {
 	    }
 
 	    AddressingMode::AddressingIndirectY	=> {
-		let lo: u8 = instruction_buffer[self.regs.pc as usize] + self.regs.y;
-		let hi: u8 = instruction_buffer[(self.regs.pc + 1) as usize];
+		let lo: u8 = self.bus.vram[self.regs.pc as usize] + self.regs.y;
+		let hi: u8 = self.bus.vram[(self.regs.pc + 1) as usize];
 		// let addr: u16 = (hi << 4) as u16 | lo as u16;
 		let addr: u16 = (lo << 4) as u16 | hi as u16;
 		let val = self.bus.vram[addr as usize] as u16;
@@ -221,42 +222,36 @@ impl	Cpu6502 {
 	    }
 
 	    AddressingMode::AddressingAbsolute	=> {
-		let absolute: u16 = (instruction_buffer[(self.regs.pc + 1) as usize] << 4) as u16
-		    | (instruction_buffer[(self.regs.pc + 2) as usize] as u16);
+		let absolute: u16 = (self.bus.vram[(self.regs.pc + 1) as usize] << 4) as u16
+		    | (self.bus.vram[(self.regs.pc + 2) as usize] as u16);
 		self.regs.pc += 2;
 		absolute
 	    }
 
 	    AddressingMode::AddressingAbsoluteX	=> {
-		let mut absolute: u16 = (instruction_buffer[(self.regs.pc) as usize] << 4) as u16
-		    | (instruction_buffer[(self.regs.pc + 1) as usize] as u16);
+		let mut absolute: u16 = (self.bus.vram[(self.regs.pc) as usize] << 4) as u16
+		    | (self.bus.vram[(self.regs.pc + 1) as usize] as u16);
 		absolute = (((absolute & 0xFF00) >> 4) as u8 + self.regs.x) as u16 | (absolute & 0xFF) as u16;
 		self.regs.pc += 2;
 		absolute
 	    }
 
 	    AddressingMode::AddressingAbsoluteY	=> {
-		let mut absolute: u16 = (instruction_buffer[(self.regs.pc) as usize] << 4) as u16
-		    | (instruction_buffer[(self.regs.pc + 1) as usize] as u16);
+		let mut absolute: u16 = (self.bus.vram[(self.regs.pc) as usize] << 4) as u16
+		    | (self.bus.vram[(self.regs.pc + 1) as usize] as u16);
 		absolute = (((absolute & 0xFF00) >> 4) as u8 + self.regs.y) as u16 | (absolute & 0xFF) as u16;
 		self.regs.pc += 2;
 		absolute
 	    }
 
 	    AddressingMode::AddressingZeroPage	=> {
-		let zp: u16 = instruction_buffer[self.regs.pc as usize] as u16;
-		// let val: u16 = self.bus.vram[zp as usize] as u16;
-		// println!("mem[{:#x}] == {:#x}", zp, val);
-
+		let zp: u16 = self.bus.vram[self.regs.pc as usize] as u16;
 		self.regs.pc += 1;
 		zp
 	    }
 
 	    AddressingMode::AddressingZeroPageX	=> {
-		let zp: u16 = (instruction_buffer[self.regs.pc as usize] + self.regs.x) as u16;
-		// let val: u16 = self.bus.vram[zp as usize] as u16;
-		// println!("mem[{:#x}] == {:#x}", zp, val);
-
+		let zp: u16 = (self.bus.vram[self.regs.pc as usize] + self.regs.x) as u16;
 		self.regs.pc += 1;
 		zp
 	    }
@@ -265,17 +260,16 @@ impl	Cpu6502 {
 	}
     }
 
-    fn instruction_fetch(self: &mut Self, rom_bytes: &Vec<u8>) -> u8 {
-	let instruction = rom_bytes[self.regs.pc as usize];
+    fn instruction_fetch(self: &mut Self) -> u8 {
+	let instruction = self.bus.vram[self.regs.pc as usize];
 	self.regs.pc = self.regs.pc + 1;
 	instruction
     }
 
-    fn instruction_execute(self: &mut Self, opcode: u8, instruction_buffer: &mut Vec<u8>) -> i32{
-
+    fn instruction_execute(self: &mut Self, opcode: u8) -> i32{
 	// https://www.masswerk.at/6502/6502_instruction_set.html
 	let index_of_ins_in_vec = self.ins.iter().position(|ins| ins.opcode == opcode).unwrap();
-	let operand = self.get_operand(index_of_ins_in_vec as u8, instruction_buffer);
+	let operand = self.get_operand(index_of_ins_in_vec as u8);
 	let ins: &Ins6502 = &self.ins[index_of_ins_in_vec];
 
 	println!("{}, {:#x} ({})", ins.mnem, operand, ins.addressing_mode.to_string());
@@ -289,19 +283,12 @@ impl	Cpu6502 {
 	    }
 
 	    "LDA" => { // there's gotta be a better way to do this!
-		if (ins.addressing_mode != AddressingMode::AddressingZeroPage
-		    && ins.addressing_mode != AddressingMode::AddressingZeroPageX
-		    && ins.addressing_mode != AddressingMode::AddressingZeroPageY){
-		    self.regs.a = operand as u8;
-		}
-		else {
-		    self.regs.a = self.bus.vram[operand as usize];
-		}
+		self.regs.a = self.bus.vram[operand as usize] as u8;
 		self.set_status_bit('a', 'N');
 		self.set_status_bit('a', 'Z');
 	    }
 
-	    "JMP" => {  self.regs.pc = operand }
+	    "JMP" => {  self.regs.pc = operand; }
 	    "STX" => {	self.bus.vram[operand as usize] = self.regs.x; }
 	    "STY" => {	self.bus.vram[operand as usize] = self.regs.y; }
 	    "STA" => {  self.bus.vram[operand as usize] = self.regs.a; }
@@ -309,8 +296,8 @@ impl	Cpu6502 {
 	    "CLC" => { status_reset_flag(&mut self.regs, 'C'); }
 	    "TAX" => { self.regs.x = self.regs.a; }
 	    "TXA" => { self.regs.a = self.regs.x; }
-	    "LDX" => { self.regs.x = operand as u8; }
-	    "LDY" => { self.regs.y = operand as u8; }
+	    "LDX" => { self.regs.x = self.bus.vram[operand as usize] as u8; }
+	    "LDY" => { self.regs.y = self.bus.vram[operand as usize] as u8; }
 	    "INC" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize] + 1 }
 	    "INX" => { self.regs.x = self.regs.x + 1 }
 	    "INY" => { self.regs.y = self.regs.y + 1 }
@@ -319,15 +306,19 @@ impl	Cpu6502 {
 	return 1;
     }
 
-    fn run(self: &mut Self, rom_buff: &mut Vec<u8>){
+    fn run(self: &mut Self){
 	println!("Executing...\n");
 	loop {
-	    let op = self.instruction_fetch(&rom_buff);
-	    let status = self.instruction_execute(op, rom_buff);
+	    let op = self.instruction_fetch();
+	    let status = self.instruction_execute(op);
 	    if status == 0 {
 		return;
 	    }
 	}
+    }
+
+    fn load(self: &mut Self, rom_buff: &Vec<u8>){
+	self.bus.vram[MEMSTART_CARTRIDGE_ROM_6502 as usize .. (MEMSTART_CARTRIDGE_ROM_6502 as usize + rom_buff.len())].copy_from_slice(&rom_buff[..]);
     }
 }
 
@@ -357,9 +348,11 @@ fn	main() {
     }
 
     let mut cpu = Cpu6502::new();
+    cpu.load(&rom_buff);
 
     println!("Entering CPU loop!");
-    cpu.run(&mut rom_buff);
+
+    cpu.run();
     println!("Done! See ya.");
 }
 
@@ -372,7 +365,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec!(0xa9, 0x05, 0x00);
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	println!("{:b}", cpu.regs.p);
 	assert_eq!(cpu.regs.a, 0x05);
 	assert!(cpu.regs.p & STATUS_FLAG_Z == 0b00);
@@ -384,7 +378,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa9, 0x00, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.p & STATUS_FLAG_Z == 0b10);
     }
 
@@ -396,11 +391,11 @@ mod tests{
 				0xa5, 0x01, // load mem[0] into a
 				0x00);
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	println!("{:b}", cpu.regs.p);
 	assert!(cpu.regs.a == 0x2a);
     }
-
 
     #[test]
     fn test_0xb5_lda_zpx() {
@@ -411,18 +406,19 @@ mod tests{
 				0xB5, 0x01, // load mem[1] into a
 				0x00);
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	println!("{:b}", cpu.regs.p);
 	assert!(cpu.regs.a == 0x2a);
     }
-
 
     #[test]
     fn test_0xa2_ldx_immediate () {
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0xc0, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.x == 0xc0);
     }
 
@@ -431,7 +427,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa0, 0xc0, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.y == 0xc0);
     }
 
@@ -440,7 +437,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0xc0, 0x8a, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.a == 0xc0);
     }
 
@@ -449,7 +447,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa9, 0xc0, 0xaa, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.x == 0xc0);
     }
 
@@ -458,7 +457,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa2, 0x03, 0x86, 0x01, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.bus.vram[1] == 0x03);
     }
 
@@ -467,7 +467,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa0, 0x03, 0x84, 0x01, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.bus.vram[1] == 0x03);
     }
 
@@ -476,7 +477,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xa9, 0x03, 0x85, 0x01, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.bus.vram[1] == 0x03);
     }
 
@@ -490,7 +492,8 @@ mod tests{
 				0x01, 0x00, // a -> a | mem[x] (ora)
 				0x00];	    // brk
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.a == 0x3);
     }
 
@@ -499,7 +502,8 @@ mod tests{
 	let mut cpu = Cpu6502::new();
 	let mut rom_buff = vec![0xe8, 0xc8, 0x00];
 
-	cpu.run(&mut rom_buff);
+	cpu.load(&rom_buff);
+	cpu.run();
 	assert!(cpu.regs.x == 0x1);
 	assert!(cpu.regs.y == 0x1);
     }
