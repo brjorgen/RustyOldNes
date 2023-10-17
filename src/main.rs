@@ -154,6 +154,7 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x94, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
 		Ins6502 {opcode: 0x8C, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 
+		Ins6502 {opcode: 0x85, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 
 		Ins6502 {opcode: 0xE6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 		Ins6502 {opcode: 0xF6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
