@@ -88,16 +88,6 @@ pub struct	Cpu6502 {
     ins:	Vec<Ins6502>,
 }
 
-fn status_reset_flag(regs: &mut Regs6502, to_clear: char){
-    match to_clear {
-	'p'  => { regs.p = 0; }
-	'a'  => { regs.a = 0; }
-	'x'  => { regs.x = 0; }
-	'y'  => { regs.y = 0; }
-	_ => unimplemented!()
-    }
-}
-
 // not implementing implied addressing because it's implied
 impl	Cpu6502 {
     pub fn	new() -> Self {
@@ -117,11 +107,10 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x00, mnem: "BRK".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 		Ins6502 {opcode: 0xEA, mnem: "NOP".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 
-		Ins6502 {opcode: 0xAA, mnem: "TAX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
-		Ins6502 {opcode: 0x8A, mnem: "TXA".to_string(), addressing_mode: AddressingMode::AddressingImplied},
-
 		Ins6502 {opcode: 0x18, mnem: "CLC".to_string(), addressing_mode: AddressingMode::AddressingImplied},
-		Ins6502 {opcode: 0x18, mnem: "CLD".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xD8, mnem: "CLD".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0x58, mnem: "CLI".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xB8, mnem: "CLI".to_string(), addressing_mode: AddressingMode::AddressingImplied},
 
 		Ins6502 {opcode: 0x09, mnem: "ORA".to_string(), addressing_mode: AddressingMode::AddressingImmediate},
 		Ins6502 {opcode: 0x05, mnem: "ORA".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
@@ -147,14 +136,30 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x6C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingIndirect},
 		Ins6502 {opcode: 0x4C, mnem: "JMP".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 
-		Ins6502 {opcode: 0x86, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
-		Ins6502 {opcode: 0x96, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPageY},
-		Ins6502 {opcode: 0x8E, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 		Ins6502 {opcode: 0x84, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 		Ins6502 {opcode: 0x94, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
 		Ins6502 {opcode: 0x8C, mnem: "STY".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 
 		Ins6502 {opcode: 0x85, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		Ins6502 {opcode: 0x95, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
+		Ins6502 {opcode: 0x8D, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
+		Ins6502 {opcode: 0x9D, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingAbsoluteX},
+		Ins6502 {opcode: 0x99, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingAbsoluteY},
+		Ins6502 {opcode: 0x81, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingIndirectX},
+		Ins6502 {opcode: 0x91, mnem: "STA".to_string(), addressing_mode: AddressingMode::AddressingIndirectY},
+
+		Ins6502 {opcode: 0x86, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
+		Ins6502 {opcode: 0x96, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingZeroPageY},
+		Ins6502 {opcode: 0x8E, mnem: "STX".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
+
+
+		Ins6502 {opcode: 0xAA, mnem: "TAX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xA8, mnem: "TAY".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0xA8, mnem: "TSX".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0x8A, mnem: "TXA".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0x9A, mnem: "TXS".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+		Ins6502 {opcode: 0x98, mnem: "TYA".to_string(), addressing_mode: AddressingMode::AddressingImplied},
+
 
 		Ins6502 {opcode: 0xE6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPage},
 		Ins6502 {opcode: 0xF6, mnem: "INC".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
@@ -177,7 +182,6 @@ impl	Cpu6502 {
 		Ins6502 {opcode: 0x76, mnem: "ROR".to_string(), addressing_mode: AddressingMode::AddressingZeroPageX},
 		Ins6502 {opcode: 0x6E, mnem: "ROR".to_string(), addressing_mode: AddressingMode::AddressingAbsolute},
 		Ins6502 {opcode: 0x7E, mnem: "ROR".to_string(), addressing_mode: AddressingMode::AddressingAbsoluteX},
-		
 	    ]
 	}
     }
@@ -304,12 +308,10 @@ impl	Cpu6502 {
 	println!("{}, {:#x} {:#x} ({})", ins.mnem, operand, self.bus.vram[operand as usize], ins.addressing_mode.to_string());
 
 	match &ins.mnem as &str {
-	    "ORA" => {
-		println!("regs.a = {:x} | {:x} (value of mem[{:x}])",
-			 self.regs.a,
-			 self.bus.vram[operand as usize],
-			 operand);
+	    "AND" => { self.regs.a = self.regs.a & self.bus.vram[operand as usize]; }
+	    "ASL" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize] << 1; }
 
+	    "ORA" => {
 		self.regs.a = self.regs.a | operand as u8;
 		self.set_status_bit('a', 'N');
 		self.set_status_bit('a', 'Z');
@@ -321,26 +323,48 @@ impl	Cpu6502 {
 		self.set_status_bit('a', 'Z');
 	    }
 
+	    "CMP" => {
+		let v: u8 = self.bus.vram[operand as usize];
+		if self.regs.a > v { self.regs.p = self.regs.p | STATUS_FLAG_C; }
+	    }
+
 	    "PHA" => { self.bus.vram[(MEMSTART_STACK_6502 - self.regs.sp as u16) as usize] = self.regs.a; self.regs.sp -= 1; }
 	    "PHP" => { self.bus.vram[(MEMSTART_STACK_6502 - self.regs.sp as u16) as usize] = self.regs.p; self.regs.sp -= 1; }
 	    "PLA" => { self.regs.a = self.bus.vram[(MEMSTART_STACK_6502 - self.regs.sp as u16) as usize]; self.regs.sp += 1; }
 	    "PLP" => { self.regs.p = self.bus.vram[(MEMSTART_STACK_6502 - self.regs.sp as u16) as usize]; self.regs.sp += 1; }
+
 	    "ROL" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize].rotate_left(1); }
 	    "ROR" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize].rotate_right(1); }
+
 	    "NOP" => { println!("!NOP!"); }
+
 	    "JMP" => { self.regs.pc = operand; }
 	    "STX" => { self.bus.vram[operand as usize] = self.regs.x; }
 	    "STY" => { self.bus.vram[operand as usize] = self.regs.y; }
 	    "STA" => { self.bus.vram[operand as usize] = self.regs.a; }
+
 	    "BRK" => { return 0; }
-	    "CLC" => { status_reset_flag(&mut self.regs, 'C'); }
+
+	    "CLC" => { self.regs.p = self.regs.p & !STATUS_FLAG_C; }
+	    "CLD" => { self.regs.p = self.regs.p & !STATUS_FLAG_D; }
+	    "CLI" => { self.regs.p = self.regs.p & !STATUS_FLAG_I; }
+	    "CLV" => { self.regs.p = self.regs.p & !STATUS_FLAG_V; }
+
 	    "TAX" => { self.regs.x = self.regs.a; }
+	    "TAY" => { self.regs.y = self.regs.a; }
+	    "TSX" => { self.regs.x = self.regs.sp; }
 	    "TXA" => { self.regs.a = self.regs.x; }
-	    "LDX" => { self.regs.x = self.bus.vram[operand as usize] as u8; println!("x set to {:x} from mem[{:x}]", self.regs.x, operand);}
+	    "TXS" => { self.regs.sp = self.regs.x;}
+	    "TYA" => { self.regs.a = self.regs.y;}
+
+	    
+	    "LDX" => { self.regs.x = self.bus.vram[operand as usize] as u8; }
 	    "LDY" => { self.regs.y = self.bus.vram[operand as usize] as u8; }
+
 	    "INC" => { self.bus.vram[operand as usize] = self.bus.vram[operand as usize] + 1 }
 	    "INX" => { self.regs.x = self.regs.x + 1 }
 	    "INY" => { self.regs.y = self.regs.y + 1 }
+
 	    _ => todo!()
 	}
 	return 1;
@@ -521,6 +545,32 @@ mod tests{
 	cpu.run();
 	assert!(cpu.bus.vram[1] == 0x03);
     }
+
+    #[test]
+    fn test_0x95_sta_zpx () {
+	let mut cpu = Cpu6502::new();
+	let mut rom_buff = vec![0xa9, 0x03, // lda 3
+				0xa2, 0x03, // ldx 3
+				0x95, 0x01, // sta mem[x + 1]
+				0x00];
+
+	cpu.load(&rom_buff);
+	cpu.run();
+	assert!(cpu.bus.vram[4] == 0x03);
+    }
+
+    // #[test]
+    // fn test_0x8d_sta_abs () {
+    // 	let mut cpu = Cpu6502::new();
+    // 	let mut rom_buff = vec![0xa9, 0x03, // lda 3
+    // 				0xa2, 0x03, // ldx 3
+    // 				0x8D, 0x01, // sta mem[x + 1]
+    // 				0x00];
+
+    // 	cpu.load(&rom_buff);
+    // 	cpu.run();
+    // 	assert!(cpu.bus.vram[4] == 0x03);
+    // }
 
     #[test]
     fn test_0x01_ora_ind_x () {
